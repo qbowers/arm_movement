@@ -1,7 +1,7 @@
 #include<Servo.h>
 #define servopin 9
 
-#define opendegree 135
+#define opendegree 35
 #define closedegree 90
 
 
@@ -27,11 +27,16 @@ void loop() {
     }
 
     int c = Serial.read();
-    buffer[i] = c;
-    i++;
-    if (c == int('\n')) {
-        process_message();
+    if (c == int('c')) {
+        servo.write(closedegree)
+    } else if (c == int('o')) {
+        servo.write(opendegree)
     }
+    // buffer[i] = c;
+    // i++;
+    // if (c == int('\n')) {
+    //     process_message();
+    // }
 }
 
 void process_message() {
