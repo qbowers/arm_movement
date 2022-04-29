@@ -43,9 +43,9 @@ void process_message() {
         message += char(i);
     }
 
-    if (message == "open\n") {
+    if (message == "open") {
         servo.write(opendegree);
-    } else if (message == "close\n") {
+    } else if (message == "close" {
         servo.write(closedegree);
     }
 
