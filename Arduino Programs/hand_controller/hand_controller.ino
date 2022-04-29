@@ -6,8 +6,8 @@
 
 
 Servo servo;
-int i = 0;
-int[] buffer = new int[8]; // a buffer to store incoming communications in
+// int i = 0;
+// int[] buffer = new int[8]; // a buffer to store incoming communications in
 
 void setup() {
     Serial.begin(9600);
@@ -39,24 +39,24 @@ void loop() {
     // }
 }
 
-void process_message() {
-    String message = "";
+// void process_message() {
+//     String message = "";
 
-    for (int c:buffer) {
-        if (c == int('\n')) break;
+//     for (int c:buffer) {
+//         if (c == int('\n')) break;
 
-        message += char(i);
-    }
+//         message += char(i);
+//     }
 
-    if (message == "open") {
-        servo.write(opendegree);
-    } else if (message == "close" {
-        servo.write(closedegree);
-    }
+//     if (message == "open") {
+//         servo.write(opendegree);
+//     } else if (message == "close" {
+//         servo.write(closedegree);
+//     }
 
-    // Clear buffer
-    for (int j = 0; j<buffer.length; j++) {
-        buffer[j] = 0;
-    }
-    i = 0
-}
+//     // Clear buffer
+//     for (int j = 0; j<buffer.length; j++) {
+//         buffer[j] = 0;
+//     }
+//     i = 0
+// }
