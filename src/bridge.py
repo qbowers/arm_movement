@@ -13,7 +13,7 @@ class Bridge():
         rospy.Subscriber(grab_topic, Boolmsg, self.grab_callback)
 
     def grab_callback(self, msg):
-        rospy.logwarn("command:" + str(msg.data)
+        rospy.logwarn("command:" + str(msg.data))
         if msg.data:
             self.port.write(b'c')
         else:
