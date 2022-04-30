@@ -11,6 +11,7 @@ void setup() {
     Serial.begin(9600);
     
     pinMode(servopin, OUTPUT);
+    pinMode(13, OUTPUT);
     servo.attach(servopin);
 
     servo.write(90);
