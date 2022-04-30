@@ -1,34 +1,39 @@
-import rospy
+# import rospy
 import serial
-from std_msgs.msgs import Bool as Boolmsg
+import time
+# from std_msgs.msgs import Bool as Boolmsg
 
-
+class Boolmsg():
+    data = True
 class Bridge():
     def __init__(self):
         # arduino_port = 'ttyUSB4'  # or something
-        arduino_port = 'COM1'       # or something
+        arduino_port = 'COM6'       # or something
         grab_topic = '/grab'
 
         self.port = serial.Serial(arduino_port, 9600)
-        rospy.Subscriber(grab_topic, Boolmsg, self.grab_callback)
+        # rospy.Subscriber(grab_topic, Boolmsg, self.grab_callback)
 
     def grab_callback(self, msg):
-        rospy.logwarn("command:" + str(msg.data))
+        print("command:" + str(msg.data))
         if msg.data:
-            self.port.write(b'c')
+            self.port.write(b'c\n')
         else:
-            self.port.write(b'o')
+            self.port.write(b'o\n')
 
 if __name__ == '__main__':
-    rospy.init_node('SerialBridge', anonymous=True)
+    # rospy.init_node('SerialBridge', anonymous=True)
     b = Bridge()
 
     # Should open and close once
-    msg = Boolmsg
+
+    time.sleep(10)
+    msg = Boolmsg()
     msg.data = False
     b.grab_callback(msg)
-    rospy.sleep(2.0)
+    time.sleep(5.0)
+
     msg.data = True
     b.grab_callback(msg)
-
-    rospy.spin()
+    time.sleep(5.0)
+    # rospy.spin()

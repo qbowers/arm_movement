@@ -6,14 +6,10 @@
 
 
 Servo servo;
-// int i = 0;
-// int[] buffer = new int[8]; // a buffer to store incoming communications in
 
 void setup() {
     Serial.begin(9600);
-
     
-
     pinMode(servopin, OUTPUT);
     servo.attach(servopin);
 
@@ -27,36 +23,21 @@ void loop() {
     }
 
     int c = Serial.read();
+    Serial.println(c);
     if (c == int('c')) {
-        servo.write(closedegree)
+        servo.write(closedegree);
+        blink(5, 200);
     } else if (c == int('o')) {
-        servo.write(opendegree)
+        servo.write(opendegree);
+        blink(10, 100);
     }
-    // buffer[i] = c;
-    // i++;
-    // if (c == int('\n')) {
-    //     process_message();
-    // }
 }
 
-// void process_message() {
-//     String message = "";
-
-//     for (int c:buffer) {
-//         if (c == int('\n')) break;
-
-//         message += char(i);
-//     }
-
-//     if (message == "open") {
-//         servo.write(opendegree);
-//     } else if (message == "close" {
-//         servo.write(closedegree);
-//     }
-
-//     // Clear buffer
-//     for (int j = 0; j<buffer.length; j++) {
-//         buffer[j] = 0;
-//     }
-//     i = 0
-// }
+void blink(int n, int d) {
+    for (int i = 0; i < n; i++) {
+        digitalWrite(13,HIGH);
+        delay(d);
+        digitalWrite(13,LOW);
+        delay(d);
+    }
+}
