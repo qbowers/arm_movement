@@ -17,9 +17,9 @@ class Bridge():
     def grab_callback(self, msg):
         print("command:" + str(msg.data))
         if msg.data:
-            self.port.write(b'c\n')
+            self.port.write(b'c')
         else:
-            self.port.write(b'o\n')
+            self.port.write(b'o')
 
 if __name__ == '__main__':
     # rospy.init_node('SerialBridge', anonymous=True)
@@ -27,11 +27,11 @@ if __name__ == '__main__':
 
     # Should open and close once
 
-    time.sleep(10)
+    time.sleep(3)
     msg = Boolmsg()
     msg.data = False
     b.grab_callback(msg)
-    time.sleep(5.0)
+    time.sleep(3)
 
     msg.data = True
     b.grab_callback(msg)
