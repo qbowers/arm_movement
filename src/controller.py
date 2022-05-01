@@ -1,7 +1,6 @@
 import rospy
 import numpy as np
 
-
 # control imports
 import sys
 import pygame
@@ -18,8 +17,6 @@ from moveit_commander.conversions import pose_to_list
 
 class Controller():
     def __init__(self):
-
-
         # init keyboard inputs
         pygame.init()
         rospy.sleep(1)
@@ -38,7 +35,6 @@ class Controller():
         display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
                                                moveit_msgs.msg.DisplayTrajectory,
                                                queue_size=20)
-
 
         target_pose = geometry_msgs.msg.Pose()
         target_pose.orientation.w = 1

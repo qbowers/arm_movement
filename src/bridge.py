@@ -1,10 +1,10 @@
-# import rospy
+import rospy
 import serial
 import time
-# from std_msgs.msgs import Bool as Boolmsg
+from std_msgs.msg import Bool as Boolmsg
 
-class Boolmsg():
-    data = True
+# class Boolmsg():
+#     data = True
 class Bridge():
     def __init__(self):
         # arduino_port = 'ttyUSB4'  # or something
@@ -22,7 +22,7 @@ class Bridge():
             self.port.write(b'o')
 
 if __name__ == '__main__':
-    # rospy.init_node('SerialBridge', anonymous=True)
+    rospy.init_node('SerialBridge', anonymous=True)
     b = Bridge()
 
     # Should open and close once
@@ -36,4 +36,4 @@ if __name__ == '__main__':
     msg.data = True
     b.grab_callback(msg)
     time.sleep(5.0)
-    # rospy.spin()
+    rospy.spin()
