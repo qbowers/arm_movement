@@ -27,7 +27,7 @@ class Controller():
 
         # init moveit
         moveit_commander.roscpp_initialize(sys.argv)
-        robot = moveit_commander.RobotCommander()
+        # robot = moveit_commander.RobotCommander()
 
         scene = moveit_commander.PlanningSceneInterface()
 
