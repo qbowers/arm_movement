@@ -1,45 +1,4 @@
-#!/usr/bin/env python
-
-# Software License Agreement (BSD License)
-#
-# Copyright (c) 2013, SRI International
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above
-#    copyright notice, this list of conditions and the following
-#    disclaimer in the documentation and/or other materials provided
-#    with the distribution.
-#  * Neither the name of SRI International nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-#
-# Author: Acorn Pooley, Mike Lautman
-
-## BEGIN_SUB_TUTORIAL imports
-##
-## To use the Python MoveIt interfaces, we will import the `moveit_commander`_ namespace.
-## This namespace provides us with a `MoveGroupCommander`_ class, a `PlanningSceneInterface`_ class,
-## and a `RobotCommander`_ class. More on these below. We also import `rospy`_ and some messages that we will use:
-##
+#!/usr/bin/env python2
 
 import sys
 import keyboard
@@ -154,6 +113,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     self.eef_link = eef_link
     self.group_names = group_names
     self.command = outputMsg.Robotiq2FGripper_robot_output();
+    self.teleop_speed = 1.0
 
 
   def go_to_joint_state(self):
@@ -501,6 +461,24 @@ class MoveGroupPythonIntefaceTutorial(object):
       pub.publish(self.command)
 
       rospy.sleep(0.1)
+  
+  def create_waypoint(self, pose_change):
+    # pose_change [dx, dy, dz, dtheta]
+    waypoint = []
+    pose = copy.deepcopy(self.move_group.get_current_pose().pose)
+    pose.position.x += pose_change[0]
+    pose.position.y += pose_change[1]
+    pose.position.z += pose_change[2]
+
+    old_quaternion = [old_pose.orientation.x, old_pose.orientation.y, old_pose.orientation.z, old_pose.orientation.w]
+    gripper_angle = tf.transformations.euler_from_quaternion(old_quaternion)
+    quaternion = tf.transformations.quaternion_from_euler(0, 0, gripper_angle + pose_change[3])
+    pose.orientation.x = quaternion[0]
+    pose.orientation.y = quaternion[1]
+    pose.orientation.z = quaternion[2]
+    pose.orientation.w = quaternion[3]
+
+    waypoint.append(pose)
 
   def CreateWaypoints(self, direction = str, isNegative = False, dist = float):
     """ 
@@ -617,18 +595,47 @@ def main():
     print "============ Press `Enter` to begin the tutorial by setting up the moveit_commander ..."
     raw_input()
     tutorial = MoveGroupPythonIntefaceTutorial()
+    tutorial.go_to_joint_state()
 
     # print "DFDSFDSFDSF"
-    current_pose = tutorial.move_group.get_current_pose().pose
 
-
-    print current_pose
+    # print current_pose
     while True:
       char = getch()
-      print char
+      # print char
 
       if 'w' in char:
-        print "W LESGO"
+        waypoints = tutorial.create_waypoint([tutorial.teleop_speed, 0.0, 0.0, 0.0])
+        cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
+        tutorial.display_trajectory(cartesian_plan)
+      if 's' in char:
+        waypoints = tutorial.create_waypoint([-tutorial.teleop_speed, 0.0, 0.0, 0.0])
+        cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
+        tutorial.display_trajectory(cartesian_plan)
+      if 'a' in char:
+        waypoints = tutorial.create_waypoint([0.0, tutorial.teleop_speed, 0.0, 0.0])
+        cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
+        tutorial.display_trajectory(cartesian_plan)
+      if 'd' in char:
+        waypoints = tutorial.create_waypoint([0.0, -tutorial.teleop_speed, 0.0, 0.0])
+        cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
+        tutorial.display_trajectory(cartesian_plan)
+      if 'r' in char:
+        waypoints = tutorial.create_waypoint([0.0, 0.0, tutorial.teleop_speed, 0.0])
+        cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
+        tutorial.display_trajectory(cartesian_plan)
+      if 'f' in char:
+        waypoints = tutorial.create_waypoint([0.0, 0.0, -tutorial.teleop_speed, 0.0])
+        cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
+        tutorial.display_trajectory(cartesian_plan)
+      if 'u' in char:
+        waypoints = tutorial.create_waypoint([0.0, 0.0, 0.0, -tutorial.teleop_speed])
+        cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
+        tutorial.display_trajectory(cartesian_plan)
+      if 'i' in char:
+        waypoints = tutorial.create_waypoint([0.0, 0.0, 0.0, -tutorial.teleop_speed])
+        cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
+        tutorial.display_trajectory(cartesian_plan)
 
       if 'q' in char:
         break
@@ -651,7 +658,6 @@ def main():
 
     # print "============ Press `Enter` to execute a movement using a joint state goal ..."
     # raw_input()
-    # tutorial.go_to_joint_state()
 
     print "============ Python tutorial demo complete!"
   except rospy.ROSInterruptException:
