@@ -554,6 +554,65 @@ def quaternion_from_euler(roll, pitch, yaw):
  
   return [qx, qy, qz, qw]
 
+def teleop(tutorial):
+  homing = False
+  pose_change = [0.0, 0.0, 0.0, 0.0]
+  tutorial.pose_acceleration = np.array([0.0, 0.0, 0.0, 0.0]) 
+
+  try:
+    c = sys.stdin.read(1)
+    c = repr(c)[1:-1]
+    print(c)
+
+    if c == 'q':
+      return False
+
+    if c == 'w':
+      pose_change = [tutorial.teleop_speed, 0.0, 0.0, 0.0]
+      tutorial.pose_acceleration[0] = tutorial.teleop_accelerations[0]
+    if c == 's':
+      pose_change = [-tutorial.teleop_speed, 0.0, 0.0, 0.0]
+      tutorial.pose_acceleration[0] = -tutorial.teleop_accelerations[0]
+    if c == 'a':
+      pose_change = [0.0, tutorial.teleop_speed, 0.0, 0.0]
+      tutorial.pose_acceleration[1] = tutorial.teleop_accelerations[1]
+    if c == 'd':
+      pose_change = [0.0, -tutorial.teleop_speed, 0.0, 0.0]
+      tutorial.pose_acceleration[1] = -tutorial.teleop_accelerations[1]
+    if c == 'r':
+      pose_change = [0.0, 0.0, tutorial.teleop_speed, 0.0]
+      tutorial.pose_acceleration[2] = tutorial.teleop_accelerations[2]
+    if c == 'f':
+      pose_change = [0.0, 0.0, -tutorial.teleop_speed, 0.0]
+      tutorial.pose_acceleration[2] = -tutorial.teleop_accelerations[2]
+    if c == 'u':
+      pose_change = [0.0, 0.0, 0.0, -tutorial.teleop_speed]
+      tutorial.pose_acceleration[3] = tutorial.teleop_accelerations[3]
+    if c == 'i':
+      pose_change = [0.0, 0.0, 0.0, tutorial.teleop_speed]
+      tutorial.pose_acceleration[3] = -tutorial.teleop_accelerations[3]
+    # waypoints = tutorial.create_waypoint(pose_change)
+
+    if c == 'h':
+      tutorial.pose_acceleration = np.array([0.0, 0.0, 0.0, 0.0])
+      tutorial.pose_velocity = np.array([0.0, 0.0, 0.0, 0.0])
+      waypoints = tutorial.get_home_waypoint()
+      homing = True
+  except IOError:
+      print("none")
+
+  print(tutorial.pose_velocity)   
+  if not homing:
+    tutorial.pose_velocity += tutorial.pose_acceleration
+    tutorial.pose_velocity = np.clip(tutorial.pose_velocity, -tutorial.max_pose_velocity[0], tutorial.max_pose_velocity[0])
+    tutorial.pose_velocity = tutorial.pose_velocity * tutorial.pose_damping
+    waypoints = tutorial.create_waypoint(tutorial.pose_velocity)
+
+  cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
+  tutorial.execute_plan(cartesian_plan)
+
+  return True
+
 def main():
 
   waypoint_test = []
@@ -575,15 +634,12 @@ def main():
     rate = rospy.Rate(20) # 1 Hz
     # print current_pose
 
+    run = True
     with raw(sys.stdin):
-        with nonblocking(sys.stdin):
-            while True:
-                try:
-                    c = sys.stdin.read(1)
-                    print(repr(c))
-                except IOError:
-                    print('not ready')
-              rate.sleep()
+      with nonblocking(sys.stdin):
+        while run:
+          run = teleop(tutorial)
+          rate.sleep()
     # while True:
     #   if keyboard.is_pressed('q'):  # if key 'q' is pressed 
     #         print('You Pressed q Key!')
