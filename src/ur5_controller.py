@@ -2,6 +2,8 @@
 
 import sys
 import keyboard
+import fcntl
+import os
 import termios
 import tty
 import copy
@@ -116,6 +118,11 @@ class MoveGroupPythonIntefaceTutorial(object):
     self.group_names = group_names
     self.command = outputMsg.Robotiq2FGripper_robot_output();
     self.teleop_speed = 0.005
+    self.teleop_accelerations = np.array([0.05, 0.05, 0.05, 0.05])
+    self.pose_acceleration = np.array([0.0, 0.0, 0.0, 0.0])
+    self.pose_velocity = np.array([0.0, 0.0, 0.0, 0.0])
+    self.max_pose_velocity = np.array([0.1, 0.1, 0.1, 0.1])
+    self.pose_damping = np.array([0.7, 0.7, 0.7, 0.7])
 
 
   def go_to_joint_state(self):
@@ -474,12 +481,14 @@ class MoveGroupPythonIntefaceTutorial(object):
     pose.position.y += pose_change[1]
     pose.position.z += pose_change[2]
 
-    _, _, gripper_angle = euler_from_quaternion(old_pose.orientation.x, old_pose.orientation.y, old_pose.orientation.z, old_pose.orientation.w)
-    quaternion = quaternion_from_euler(0, 0, gripper_angle + pose_change[3])
-    pose.orientation.x = quaternion[0]
-    pose.orientation.y = quaternion[1]
-    pose.orientation.z = quaternion[2]
-    pose.orientation.w = quaternion[3]
+    # TODO THIS NEEDS TO BE CHECKED
+    if pose_change[3] != 0.0:
+      _, _, gripper_angle = euler_from_quaternion(old_pose.orientation.x, old_pose.orientation.y, old_pose.orientation.z, old_pose.orientation.w)
+      quaternion = quaternion_from_euler(0, 0, gripper_angle + pose_change[3])
+      pose.orientation.x = quaternion[0]
+      pose.orientation.y = quaternion[1]
+      pose.orientation.z = quaternion[2]
+      pose.orientation.w = quaternion[3]
 
     waypoints.append(pose)
     return waypoints
@@ -488,9 +497,9 @@ class MoveGroupPythonIntefaceTutorial(object):
     waypoints = []
     old_pose = self.move_group.get_current_pose().pose
     home_pose = copy.deepcopy(old_pose)
-    home_pose.position.x = 0.4
+    home_pose.position.x = 0.5
     home_pose.position.y = 0.0
-    home_pose.position.z = 0.3
+    home_pose.position.z = 0.15
 
     offset_case = 1
 
@@ -545,18 +554,6 @@ def quaternion_from_euler(roll, pitch, yaw):
  
   return [qx, qy, qz, qw]
 
-
-def getch():
-  fd = sys.stdin.fileno()
-  old_settings = termios.tcgetattr(fd)
-  try:
-    tty.setraw(sys.stdin.fileno())
-    ch = sys.stdin.readline(1)
- 
-  finally:
-    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-  return ch
-
 def main():
 
   waypoint_test = []
@@ -575,39 +572,69 @@ def main():
     print(tutorial.move_group.get_current_pose().pose)
 
     # print "DFDSFDSFDSF"
-
+    rate = rospy.Rate(20) # 1 Hz
     # print current_pose
+    
+    with raw(sys.stdin):
+        with nonblocking(sys.stdin):
+            while True:
+                try:
+                    c = sys.stdin.read(1)
+                    print(repr(c))
+                except IOError:
+                    print('not ready')
     while True:
-      char = getch()
+      if keyboard.is_pressed('q'):  # if key 'q' is pressed 
+            print('You Pressed q Key!')
+            # break  # finishing the loop
+      # char = getch()
 
-      if 'q' in char:
-        break
+      # if 'q' in char:
+      #   break
 
-      pose_change = [0.0, 0.0, 0.0, 0.0]
-      if 'w' in char:
-        pose_change = [tutorial.teleop_speed, 0.0, 0.0, 0.0]
-      if 's' in char:
-        pose_change = [-tutorial.teleop_speed, 0.0, 0.0, 0.0]
-      if 'a' in char:
-        pose_change = [0.0, tutorial.teleop_speed, 0.0, 0.0]
-      if 'd' in char:
-        pose_change = [0.0, -tutorial.teleop_speed, 0.0, 0.0]
-      if 'r' in char:
-        pose_change = [0.0, 0.0, tutorial.teleop_speed, 0.0]
-      if 'f' in char:
-        pose_change = [0.0, 0.0, -tutorial.teleop_speed, 0.0]
-      if 'u' in char:
-        pose_change = [0.0, 0.0, 0.0, -tutorial.teleop_speed]
-      if 'i' in char:
-        pose_change = [0.0, 0.0, 0.0, tutorial.teleop_speed]
+      # pose_change = [0.0, 0.0, 0.0, 0.0]
+      # tutorial.pose_acceleration = np.array([0.0, 0.0, 0.0, 0.0])
+      # if 'w' in char:
+      #   pose_change = [tutorial.teleop_speed, 0.0, 0.0, 0.0]
+      #   tutorial.pose_acceleration[0] = tutorial.teleop_accelerations[0]
+      # if 's' in char:
+      #   pose_change = [-tutorial.teleop_speed, 0.0, 0.0, 0.0]
+      #   tutorial.pose_acceleration[0] = -tutorial.teleop_accelerations[0]
+      # if 'a' in char:
+      #   pose_change = [0.0, tutorial.teleop_speed, 0.0, 0.0]
+      #   tutorial.pose_acceleration[1] = tutorial.teleop_accelerations[1]
+      # if 'd' in char:
+      #   pose_change = [0.0, -tutorial.teleop_speed, 0.0, 0.0]
+      #   tutorial.pose_acceleration[1] = -tutorial.teleop_accelerations[1]
+      # if 'r' in char:
+      #   pose_change = [0.0, 0.0, tutorial.teleop_speed, 0.0]
+      #   tutorial.pose_acceleration[2] = tutorial.teleop_accelerations[2]
+      # if 'f' in char:
+      #   pose_change = [0.0, 0.0, -tutorial.teleop_speed, 0.0]
+      #   tutorial.pose_acceleration[2] = -tutorial.teleop_accelerations[2]
+      # if 'u' in char:
+      #   pose_change = [0.0, 0.0, 0.0, -tutorial.teleop_speed]
+      #   tutorial.pose_acceleration[3] = tutorial.teleop_accelerations[3]
+      # if 'i' in char:
+      #   pose_change = [0.0, 0.0, 0.0, tutorial.teleop_speed]
+      #   tutorial.pose_acceleration[3] = -tutorial.teleop_accelerations[3]
 
-      waypoints = tutorial.create_waypoint(pose_change)
+      # tutorial.pose_velocity += tutorial.pose_acceleration
+      # tutorial.pose_velocity = np.clip(tutorial.pose_velocity, -tutorial.max_pose_velocity[0], tutorial.max_pose_velocity[0])
+      # tutorial.pose_velocity = tutorial.pose_velocity * tutorial.pose_damping
+      # waypoints = tutorial.create_waypoint(tutorial.pose_velocity)
+      # # waypoints = tutorial.create_waypoint(pose_change)
+      # print(tutorial.pose_velocity)
 
-      if 'h' in char:
-        waypoints = tutorial.get_home_waypoint()
+      # if 'h' in char:
+      #   tutorial.pose_acceleration = np.array([0.0, 0.0, 0.0, 0.0])
+      #   tutorial.pose_velocity = np.array([0.0, 0.0, 0.0, 0.0])
+      #   waypoints = tutorial.get_home_waypoint()
 
-      cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
-      tutorial.execute_plan(cartesian_plan)
+      # cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
+      # tutorial.execute_plan(cartesian_plan)
+
+      rate.sleep()
 
     
     # print "============ Press `Enter` to reset the gripper ..."
@@ -634,6 +661,39 @@ def main():
     return
   except KeyboardInterrupt:
     return
+
+# keyboard teleop junk 1
+class raw(object):
+    def __init__(self, stream):
+        self.stream = stream
+        self.fd = self.stream.fileno()
+    def __enter__(self):
+        self.original_stty = termios.tcgetattr(self.stream)
+        tty.setcbreak(self.stream)
+    def __exit__(self, type, value, traceback):
+        termios.tcsetattr(self.stream, termios.TCSANOW, self.original_stty)
+
+class nonblocking(object):
+    def __init__(self, stream):
+        self.stream = stream
+        self.fd = self.stream.fileno()
+    def __enter__(self):
+        self.orig_fl = fcntl.fcntl(self.fd, fcntl.F_GETFL)
+        fcntl.fcntl(self.fd, fcntl.F_SETFL, self.orig_fl | os.O_NONBLOCK)
+    def __exit__(self, *args):
+        fcntl.fcntl(self.fd, fcntl.F_SETFL, self.orig_fl)
+
+# keyboard teleop junk 2
+def getch():
+  fd = sys.stdin.fileno()
+  old_settings = termios.tcgetattr(fd)
+  try:
+    tty.setraw(sys.stdin.fileno())
+    ch = sys.stdin.readline(1)
+ 
+  finally:
+    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+  return ch
 
 if __name__ == '__main__':
   main()
