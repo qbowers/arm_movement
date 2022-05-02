@@ -5,6 +5,8 @@ import keyboard
 import termios
 import tty
 import copy
+import math
+import numpy as np
 
 import rospy
 import moveit_commander
@@ -113,7 +115,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     self.eef_link = eef_link
     self.group_names = group_names
     self.command = outputMsg.Robotiq2FGripper_robot_output();
-    self.teleop_speed = 1.0
+    self.teleop_speed = 0.005
 
 
   def go_to_joint_state(self):
@@ -130,6 +132,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     ## thing we want to do is move it to a slightly better configuration.
     # We can get the joint values from the group and adjust some of the values:
     joint_goal = move_group.get_current_joint_values()
+    print("JG", joint_goal)
     joint_goal[0] = 0
     joint_goal[1] = -pi/4
     joint_goal[2] = pi/4
@@ -464,110 +467,83 @@ class MoveGroupPythonIntefaceTutorial(object):
   
   def create_waypoint(self, pose_change):
     # pose_change [dx, dy, dz, dtheta]
-    waypoint = []
-    pose = copy.deepcopy(self.move_group.get_current_pose().pose)
+    waypoints = []
+    old_pose = self.move_group.get_current_pose().pose
+    pose = copy.deepcopy(old_pose)
     pose.position.x += pose_change[0]
     pose.position.y += pose_change[1]
     pose.position.z += pose_change[2]
 
-    old_quaternion = [old_pose.orientation.x, old_pose.orientation.y, old_pose.orientation.z, old_pose.orientation.w]
-    gripper_angle = tf.transformations.euler_from_quaternion(old_quaternion)
-    quaternion = tf.transformations.quaternion_from_euler(0, 0, gripper_angle + pose_change[3])
+    _, _, gripper_angle = euler_from_quaternion(old_pose.orientation.x, old_pose.orientation.y, old_pose.orientation.z, old_pose.orientation.w)
+    quaternion = quaternion_from_euler(0, 0, gripper_angle + pose_change[3])
     pose.orientation.x = quaternion[0]
     pose.orientation.y = quaternion[1]
     pose.orientation.z = quaternion[2]
     pose.orientation.w = quaternion[3]
 
-    waypoint.append(pose)
+    waypoints.append(pose)
+    return waypoints
 
-  def CreateWaypoints(self, direction = str, isNegative = False, dist = float):
-    """ 
-    Function to make list of lists for waypoints so the ManualArmCommand method isn't super scary looking.
-    #Inputs: Direction (x, y, or z, as a string); isNegative (boolean)#
-    """
-    ArmPosition = self.move_group.get_current_pose().pose
-    Waypoints = []
-    pose = copy.deepcopy(ArmPosition)
-    #determine which coordinate to modify
-    if isNegative == True:
-      sign = -1
-    elif isNegative == False:
-      sign = 1
-    if direction == 'x':
-      pose.position.x += sign*dist
-    elif direction == 'y':
-      pose.position.y += sign*dist
-    elif direction == 'z':
-      pose.position.z += sign*dist
-    Waypoints.append(pose)
-    print(Waypoints)
-    return Waypoints
+  def get_home_waypoint(self):
+    waypoints = []
+    old_pose = self.move_group.get_current_pose().pose
+    home_pose = copy.deepcopy(old_pose)
+    home_pose.position.x = 0.4
+    home_pose.position.y = 0.0
+    home_pose.position.z = 0.3
 
-  def ManualArmCommand(self, EmergencyStop = False):
-    """ A function to parse a keyboard input into motion of the UR5    
-    Input: Character from manual input (to be determined)
-    Output: some specified movement is performed, be it for the UR5 or the gripper itself."""
-    # This is a modified version of the Manual function from the mobile robot team.
-    # Positive X: D
-    # Negative X: A
-    # Positive Y: W
-    # Negative Y: S
-    # Positive Z: E
-    # Negative Z: Q
-    # Open Gripper: Z
-    # Close Gripper: C
-    if not EmergencyStop:
-      char = raw_input("Choose Direction: ")
-      dist = raw_input("Enter dist: ")
-      try:
-        dist = float(dist)/1000
-      except:
-        dist = 1/1000
-      print(dist)
-      #ArmPosition = self.move_group.get_current_pose().pose.position
-      if "d" in char:
-        ManualWaypoints = self.CreateWaypoints('x', False, dist)
-        (ManualPlan, ManualFraction) = self.plan_cartesian_path(1, ManualWaypoints)
-        self.execute_plan(ManualPlan)
-        print("Move arm in POSITIVE X")
-      elif "a" in char:
-        ManualWaypoints = self.CreateWaypoints('x', True, dist)
-        (ManualPlan, ManualFraction) = self.plan_cartesian_path(1, ManualWaypoints)
-        self.execute_plan(ManualPlan)
-        print("Move arm in NEGATIVE X")
-      elif "w" in char:
-        ManualWaypoints = self.CreateWaypoints('y', False, dist)
-        (ManualPlan, ManualFraction) = self.plan_cartesian_path(1, ManualWaypoints)
-        self.execute_plan(ManualPlan)
-        print("Move arm in POSITIVE Y")
-      elif "s" in char:
-        ManualWaypoints = self.CreateWaypoints('y', True, dist)
-        (ManualPlan, ManualFraction) = self.plan_cartesian_path(1, ManualWaypoints)
-        self.execute_plan(ManualPlan)
-        print("Move arm in NEGATIVE Y")
-      elif "e" in char:
-        ManualWaypoints = self.CreateWaypoints('z', False, dist)
-        (ManualPlan, ManualFraction) = self.plan_cartesian_path(1, ManualWaypoints)
-        self.execute_plan(ManualPlan) 
-        print("Move arm in POSITIVE Z")
-      elif "q" in char: 
-        ManualWaypoints = self.CreateWaypoints('z', True, dist)
-        (ManualPlan, ManualFraction) = self.plan_cartesian_path(1, ManualWaypoints)
-        self.execute_plan(ManualPlan)
-        print("Move arm in NEGATIVE Z")
-      elif "z" in char:
-        self.GripperPublisher('o')
-        print(" OPEN GRIPPER")
-      elif "c" in char:
-        self.GripperPublisher('c')
-        print("CLOSE GRIPPER")
-      elif "exit" in char:
-        print("EXITING MANUAL")
-        return False
-      else:
-        print("Stop")
-        
-    return True
+    offset_case = 1
+
+    if offset_case == 1:
+      home_quaternion = quaternion_from_euler(0.0, 90.0 * (pi/180.0), 0.0)
+      home_pose.orientation.x = home_quaternion[0]
+      home_pose.orientation.y = home_quaternion[1]
+      home_pose.orientation.z = home_quaternion[2]
+      home_pose.orientation.w = home_quaternion[3]
+      print(home_pose)
+    waypoints.append(home_pose)
+    return waypoints
+ 
+def euler_from_quaternion(x, y, z, w):
+  """
+  Convert a quaternion into euler angles (roll, pitch, yaw)
+  roll is rotation around x in radians (counterclockwise)
+  pitch is rotation around y in radians (counterclockwise)
+  yaw is rotation around z in radians (counterclockwise)
+  """
+  t0 = +2.0 * (w * x + y * z)
+  t1 = +1.0 - 2.0 * (x * x + y * y)
+  roll_x = math.atan2(t0, t1)
+
+  t2 = +2.0 * (w * y - z * x)
+  t2 = +1.0 if t2 > +1.0 else t2
+  t2 = -1.0 if t2 < -1.0 else t2
+  pitch_y = math.asin(t2)
+
+  t3 = +2.0 * (w * z + x * y)
+  t4 = +1.0 - 2.0 * (y * y + z * z)
+  yaw_z = math.atan2(t3, t4)
+
+  return roll_x, pitch_y, yaw_z # in radians
+
+def quaternion_from_euler(roll, pitch, yaw):
+  """
+  Convert an Euler angle to a quaternion.
+   
+  Input
+    :param roll: The roll (rotation around x-axis) angle in radians.
+    :param pitch: The pitch (rotation around y-axis) angle in radians.
+    :param yaw: The yaw (rotation around z-axis) angle in radians.
+ 
+  Output
+    :return qx, qy, qz, qw: The orientation in quaternion [x,y,z,w] format
+  """
+  qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+  qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
+  qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
+  qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+ 
+  return [qx, qy, qz, qw]
 
 
 def getch():
@@ -596,49 +572,43 @@ def main():
     raw_input()
     tutorial = MoveGroupPythonIntefaceTutorial()
     tutorial.go_to_joint_state()
+    print(tutorial.move_group.get_current_pose().pose)
 
     # print "DFDSFDSFDSF"
 
     # print current_pose
     while True:
       char = getch()
-      # print char
-
-      if 'w' in char:
-        waypoints = tutorial.create_waypoint([tutorial.teleop_speed, 0.0, 0.0, 0.0])
-        cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
-        tutorial.display_trajectory(cartesian_plan)
-      if 's' in char:
-        waypoints = tutorial.create_waypoint([-tutorial.teleop_speed, 0.0, 0.0, 0.0])
-        cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
-        tutorial.display_trajectory(cartesian_plan)
-      if 'a' in char:
-        waypoints = tutorial.create_waypoint([0.0, tutorial.teleop_speed, 0.0, 0.0])
-        cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
-        tutorial.display_trajectory(cartesian_plan)
-      if 'd' in char:
-        waypoints = tutorial.create_waypoint([0.0, -tutorial.teleop_speed, 0.0, 0.0])
-        cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
-        tutorial.display_trajectory(cartesian_plan)
-      if 'r' in char:
-        waypoints = tutorial.create_waypoint([0.0, 0.0, tutorial.teleop_speed, 0.0])
-        cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
-        tutorial.display_trajectory(cartesian_plan)
-      if 'f' in char:
-        waypoints = tutorial.create_waypoint([0.0, 0.0, -tutorial.teleop_speed, 0.0])
-        cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
-        tutorial.display_trajectory(cartesian_plan)
-      if 'u' in char:
-        waypoints = tutorial.create_waypoint([0.0, 0.0, 0.0, -tutorial.teleop_speed])
-        cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
-        tutorial.display_trajectory(cartesian_plan)
-      if 'i' in char:
-        waypoints = tutorial.create_waypoint([0.0, 0.0, 0.0, -tutorial.teleop_speed])
-        cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
-        tutorial.display_trajectory(cartesian_plan)
 
       if 'q' in char:
         break
+
+      pose_change = [0.0, 0.0, 0.0, 0.0]
+      if 'w' in char:
+        pose_change = [tutorial.teleop_speed, 0.0, 0.0, 0.0]
+      if 's' in char:
+        pose_change = [-tutorial.teleop_speed, 0.0, 0.0, 0.0]
+      if 'a' in char:
+        pose_change = [0.0, tutorial.teleop_speed, 0.0, 0.0]
+      if 'd' in char:
+        pose_change = [0.0, -tutorial.teleop_speed, 0.0, 0.0]
+      if 'r' in char:
+        pose_change = [0.0, 0.0, tutorial.teleop_speed, 0.0]
+      if 'f' in char:
+        pose_change = [0.0, 0.0, -tutorial.teleop_speed, 0.0]
+      if 'u' in char:
+        pose_change = [0.0, 0.0, 0.0, -tutorial.teleop_speed]
+      if 'i' in char:
+        pose_change = [0.0, 0.0, 0.0, tutorial.teleop_speed]
+
+      waypoints = tutorial.create_waypoint(pose_change)
+
+      if 'h' in char:
+        waypoints = tutorial.get_home_waypoint()
+
+      cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
+      tutorial.execute_plan(cartesian_plan)
+
     
     # print "============ Press `Enter` to reset the gripper ..."
     # raw_input()
