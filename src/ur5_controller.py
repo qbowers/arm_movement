@@ -574,7 +574,7 @@ def main():
     # print "DFDSFDSFDSF"
     rate = rospy.Rate(20) # 1 Hz
     # print current_pose
-    
+
     with raw(sys.stdin):
         with nonblocking(sys.stdin):
             while True:
@@ -583,9 +583,10 @@ def main():
                     print(repr(c))
                 except IOError:
                     print('not ready')
-    while True:
-      if keyboard.is_pressed('q'):  # if key 'q' is pressed 
-            print('You Pressed q Key!')
+              rate.sleep()
+    # while True:
+    #   if keyboard.is_pressed('q'):  # if key 'q' is pressed 
+    #         print('You Pressed q Key!')
             # break  # finishing the loop
       # char = getch()
 
@@ -634,7 +635,7 @@ def main():
       # cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
       # tutorial.execute_plan(cartesian_plan)
 
-      rate.sleep()
+      # rate.sleep()
 
     
     # print "============ Press `Enter` to reset the gripper ..."
