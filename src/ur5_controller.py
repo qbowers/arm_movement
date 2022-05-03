@@ -119,7 +119,9 @@ class MoveGroupPythonIntefaceTutorial(object):
     #self.command = outputMsg.Robotiq2FGripper_robot_output();
 
     self.home_pose = np.array([0.5, 0.0, 0.15, 0.0])
-    self.home_orientation_offsets = np.array([0.0, 90.0, 0.0])
+    #self.home_orientation_offsets = np.array([0.0, 90.0, 0.0]) 
+    self.home_orientation_offsets = np.array([-180.0, 0.0, -180.0])
+
     self.assembly_origin_pose_offset = np.array([0.0, 0.0, 0.0, 0.0])
     self.assembly_origin_pose = np.array([0.6, -0.2, 0.15, 90.0])
     self.assembly_origin_pose = self.assembly_origin_pose + self.assembly_origin_pose_offset
