@@ -19,8 +19,8 @@ from std_msgs.msg import String
 from moveit_commander.conversions import pose_to_list
 ## END_SUB_TUTORIAL
 
-import roslib; roslib.load_manifest('robotiq_2f_gripper_control')
-from robotiq_2f_gripper_control.msg import _Robotiq2FGripper_robot_output  as outputMsg
+#import roslib; roslib.load_manifest('robotiq_2f_gripper_control')
+#from robotiq_2f_gripper_control.msg import _Robotiq2FGripper_robot_output  as outputMsg
 from time import sleep
 
 
@@ -116,7 +116,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     self.planning_frame = planning_frame
     self.eef_link = eef_link
     self.group_names = group_names
-    self.command = outputMsg.Robotiq2FGripper_robot_output();
+    #self.command = outputMsg.Robotiq2FGripper_robot_output();
 
     self.home_pose = np.array([0.5, 0.0, 0.15, 0.0])
     self.home_orientation_offsets = np.array([0.0, 90.0, 0.0])
@@ -131,7 +131,7 @@ class MoveGroupPythonIntefaceTutorial(object):
       euler_angles = self.home_orientation_offsets * (pi/180.0)
       home_quaternion = quaternion_from_euler(euler_angles[0], euler_angles[1], euler_angles[2])
 
-    self.teleop_speeds = np.array([0.005, 0.005, 0.005, 0.00001])
+    self.teleop_speeds = np.array([0.005, 0.005, 0.005, 0.005])
     self.teleop_accelerations = np.array([0.05, 0.05, 0.05, 0.05])
     self.pose_acceleration = np.array([0.0, 0.0, 0.0, 0.0])
     self.pose_velocity = np.array([0.0, 0.0, 0.0, 0.0])
@@ -426,14 +426,14 @@ class MoveGroupPythonIntefaceTutorial(object):
       # command = self.command
 
       if char == 'a':
-          self.command = outputMsg.Robotiq2FGripper_robot_output();
+          #self.command = outputMsg.Robotiq2FGripper_robot_output();
           self.command.rACT = 1
           self.command.rGTO = 1
           self.command.rSP  = 255
           self.command.rFR  = 150
 
       if char == 'r':
-          self.command = outputMsg.Robotiq2FGripper_robot_output();
+          #self.command = outputMsg.Robotiq2FGripper_robot_output();
           self.command.rACT = 0
 
       if char == 'c':
@@ -477,7 +477,7 @@ class MoveGroupPythonIntefaceTutorial(object):
 
   def publisher(self, char):
       """Main loop which requests new commands and publish them on the Robotiq2FGripperRobotOutput topic."""
-      pub = rospy.Publisher('Robotiq2FGripperRobotOutput', outputMsg.Robotiq2FGripper_robot_output)
+      #pub = rospy.Publisher('Robotiq2FGripperRobotOutput', outputMsg.Robotiq2FGripper_robot_output)
 
       self.command = self.genCommand(char)            
       print(self.command)
@@ -485,6 +485,17 @@ class MoveGroupPythonIntefaceTutorial(object):
 
       rospy.sleep(0.1)
   
+  def rotate_end_effector(self, angle_change):
+    move_group = self.move_group
+
+    joint_goal = move_group.get_current_joint_values()
+    joint_goal[5] = joint_goal[5] + angle_change
+
+    move_group.go(joint_goal, wait=True)
+    move_group.stop()
+
+    current_joints = move_group.get_current_joint_values()
+
   def get_pose_change_waypoint(self, pose_change):
     # pose_change [dx, dy, dz, dtheta]
     waypoints = []
@@ -595,9 +606,12 @@ def teleop(tutorial):
     if c.lower() == "f" or c.lower() == "h":
       tutorial.pose_velocity[2] = -tutorial.teleop_speeds[2] * speed_mult
     if c.lower() == "c" or c.lower() == "b":
-      tutorial.pose_velocity[3] = tutorial.teleop_speeds[3] * speed_mult
+      #tutorial.pose_velocity[3] = tutorial.teleop_speeds[3] * speed_mult
+      tutorial.rotate_end_effector(tutorial.teleop_speeds[3] * speed_mult)
     if c.lower() == "v" or c.lower() == "n":
-      tutorial.pose_velocity[3] = -tutorial.teleop_speeds[3] * speed_mult
+      #tutorial.pose_velocity[3] = -tutorial.teleop_speeds[3] * speed_mult
+      tutorial.rotate_end_effector(-tutorial.teleop_speeds[3] * speed_mult)
+
 
     if c.lower() == " ":
       tutorial.pose_acceleration = np.array([0.0, 0.0, 0.0, 0.0])
@@ -630,7 +644,7 @@ def main():
     print "============ Press `Enter` to begin the tutorial by setting up the moveit_commander ..."
     raw_input()
     tutorial = MoveGroupPythonIntefaceTutorial()
-    tutorial.go_to_joint_state()
+    #tutorial.go_to_joint_state()
     print(tutorial.move_group.get_current_pose().pose)
 
     # print "DFDSFDSFDSF"
