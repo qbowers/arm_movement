@@ -47,10 +47,10 @@ def all_close(goal, actual, tolerance):
   return True
 
 
-class MoveGroupPythonIntefaceTutorial(object):
-  """MoveGroupPythonIntefaceTutorial"""
+class UR5Controller(object):
+  """UR5Controller"""
   def __init__(self):
-    super(MoveGroupPythonIntefaceTutorial, self).__init__()
+    super(UR5Controller, self).__init__()
 
     ## BEGIN_SUB_TUTORIAL setup
     ##
@@ -140,75 +140,6 @@ class MoveGroupPythonIntefaceTutorial(object):
     self.max_pose_velocity = np.array([0.1, 0.1, 0.1, 0.1])
     self.pose_damping = np.array([0.7, 0.7, 0.7, 0.7])
 
-
-  def go_to_joint_state(self):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
-    move_group = self.move_group
-
-    ## BEGIN_SUB_TUTORIAL plan_to_joint_state
-    ##
-    ## Planning to a Joint Goal
-    ## ^^^^^^^^^^^^^^^^^^^^^^^^
-    ## The Panda's zero configuration is at a `singularity <https://www.quora.com/Robotics-What-is-meant-by-kinematic-singularity>`_ so the first
-    ## thing we want to do is move it to a slightly better configuration.
-    # We can get the joint values from the group and adjust some of the values:
-    joint_goal = move_group.get_current_joint_values()
-    joint_goal[0] = 0
-    joint_goal[1] = -pi/4
-    joint_goal[2] = pi/4
-    joint_goal[3] = -pi/2
-    joint_goal[4] = 0
-    joint_goal[5] = pi/3
-    # joint_goal[6] = 0
-
-    # The go command can be called with joint values, poses, or without any
-    # parameters if you have already set the pose or joint target for the group
-    move_group.go(joint_goal, wait=True)
-
-    # Calling ``stop()`` ensures that there is no residual movement
-    move_group.stop()
-
-    ## END_SUB_TUTORIAL
-
-    # For testing:
-    current_joints = move_group.get_current_joint_values()
-    return all_close(joint_goal, current_joints, 0.01)
-
-
-  def go_to_pose_goal(self, pose_goal):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
-    move_group = self.move_group
-
-    ## BEGIN_SUB_TUTORIAL plan_to_pose
-    ##
-    ## Planning to a Pose Goal
-    ## ^^^^^^^^^^^^^^^^^^^^^^^
-    ## We can plan a motion for this group to a desired pose for the
-    ## end-effector:
-  
-    move_group.set_pose_target(pose_goal)
-
-    ## Now, we call the planner to compute the plan and execute it.
-    plan = move_group.go(wait=True)
-    # Calling `stop()` ensures that there is no residual movement
-    move_group.stop()
-    # It is always good to clear your targets after planning with poses.
-    # Note: there is no equivalent function for clear_joint_value_targets()
-    move_group.clear_pose_targets()
-
-    ## END_SUB_TUTORIAL
-
-    # For testing:
-    # Note that since this section of code will not be included in the tutorials
-    # we use the class variable rather than the copied state variable
-    current_pose = self.move_group.get_current_pose().pose
-    return all_close(pose_goal, current_pose, 0.01)
-
-
   def plan_cartesian_path(self, scale=1, waypoints=[]):
     # Copy class variables to local variables to make the web tutorials more clear.
     # In practice, you should use the class variables directly unless you have a good
@@ -238,7 +169,6 @@ class MoveGroupPythonIntefaceTutorial(object):
     return plan, fraction
 
     ## END_SUB_TUTORIAL
-
 
   def display_trajectory(self, plan):
     # Copy class variables to local variables to make the web tutorials more clear.
@@ -284,210 +214,9 @@ class MoveGroupPythonIntefaceTutorial(object):
     ## **Note:** The robot's current joint state must be within some tolerance of the
     ## first waypoint in the `RobotTrajectory`_ or ``execute()`` will fail
     ## END_SUB_TUTORIAL
-
-
-  def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
-    box_name = self.box_name
-    scene = self.scene
-
-    ## BEGIN_SUB_TUTORIAL wait_for_scene_update
-    ##
-    ## Ensuring Collision Updates Are Receieved
-    ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ## If the Python node dies before publishing a collision object update message, the message
-    ## could get lost and the box will not appear. To ensure that the updates are
-    ## made, we wait until we see the changes reflected in the
-    ## ``get_attached_objects()`` and ``get_known_object_names()`` lists.
-    ## For the purpose of this tutorial, we call this function after adding,
-    ## removing, attaching or detaching an object in the planning scene. We then wait
-    ## until the updates have been made or ``timeout`` seconds have passed
-    start = rospy.get_time()
-    seconds = rospy.get_time()
-    while (seconds - start < timeout) and not rospy.is_shutdown():
-      # Test if the box is in attached objects
-      attached_objects = scene.get_attached_objects([box_name])
-      is_attached = len(attached_objects.keys()) > 0
-
-      # Test if the box is in the scene.
-      # Note that attaching the box will remove it from known_objects
-      is_known = box_name in scene.get_known_object_names()
-
-      # Test if we are in the expected state
-      if (box_is_attached == is_attached) and (box_is_known == is_known):
-        return True
-
-      # Sleep so that we give other threads time on the processor
-      rospy.sleep(0.1)
-      seconds = rospy.get_time()
-
-    # If we exited the while loop without returning then we timed out
-    return False
-    ## END_SUB_TUTORIAL
-
-
-  def add_box(self, timeout=4):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
-    box_name = self.box_name
-    scene = self.scene
-
-    ## BEGIN_SUB_TUTORIAL add_box
-    ##
-    ## Adding Objects to the Planning Scene
-    ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ## First, we will create a box in the planning scene at the location of the left finger:
-    box_pose = geometry_msgs.msg.PoseStamped()
-    box_pose.header.frame_id = "ee_link"
-    box_pose.pose.orientation.w = 1.0
-    box_pose.pose.position.z = 0.07 # slightly above the end effector
-    box_name = "box"
-    scene.add_box(box_name, box_pose, size=(0.1, 0.1, 0.1))
-
-    ## END_SUB_TUTORIAL
-    # Copy local variables back to class variables. In practice, you should use the class
-    # variables directly unless you have a good reason not to.
-    self.box_name=box_name
-    return self.wait_for_state_update(box_is_known=True, timeout=timeout)
-
-
-  def attach_box(self, timeout=4):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
-    box_name = self.box_name
-    robot = self.robot
-    scene = self.scene
-    eef_link = self.eef_link
-    group_names = self.group_names
-
-    ## BEGIN_SUB_TUTORIAL attach_object
-    ##
-    ## Attaching Objects to the Robot
-    ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ## Next, we will attach the box to the Panda wrist. Manipulating objects requires the
-    ## robot be able to touch them without the planning scene reporting the contact as a
-    ## collision. By adding link names to the ``touch_links`` array, we are telling the
-    ## planning scene to ignore collisions between those links and the box. For the Panda
-    ## robot, we set ``grasping_group = 'hand'``. If you are using a different robot,
-    ## you should change this value to the name of your end effector group name.
-    grasping_group = 'endeffector'
-    touch_links = robot.get_link_names(group=grasping_group)
-    scene.attach_box(eef_link, box_name, touch_links=touch_links)
-    ## END_SUB_TUTORIAL
-
-    # We wait for the planning scene to update.
-    return self.wait_for_state_update(box_is_attached=True, box_is_known=False, timeout=timeout)
-
-
-  def detach_box(self, timeout=4):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
-    box_name = self.box_name
-    scene = self.scene
-    eef_link = self.eef_link
-
-    ## BEGIN_SUB_TUTORIAL detach_object
-    ##
-    ## Detaching Objects from the Robot
-    ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ## We can also detach and remove the object from the planning scene:
-    scene.remove_attached_object(eef_link, name=box_name)
-    ## END_SUB_TUTORIAL
-
-    # We wait for the planning scene to update.
-    return self.wait_for_state_update(box_is_known=True, box_is_attached=False, timeout=timeout)
-
-
-  def remove_box(self, timeout=4):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
-    box_name = self.box_name
-    scene = self.scene
-
-    ## BEGIN_SUB_TUTORIAL remove_object
-    ##
-    ## Removing Objects from the Planning Scene
-    ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ## We can remove the box from the world.
-    scene.remove_world_object(box_name)
-
-    ## **Note:** The object must be detached before we can remove it from the world
-    ## END_SUB_TUTORIAL
-
-    # We wait for the planning scene to update.
-    return self.wait_for_state_update(box_is_attached=False, box_is_known=False, timeout=timeout)
-
-  def genCommand(self, char):
-      """Update the command according to the character entered by the user."""    
-      # command = self.command
-
-      if char == 'a':
-          #self.command = outputMsg.Robotiq2FGripper_robot_output();
-          self.command.rACT = 1
-          self.command.rGTO = 1
-          self.command.rSP  = 255
-          self.command.rFR  = 150
-
-      if char == 'r':
-          #self.command = outputMsg.Robotiq2FGripper_robot_output();
-          self.command.rACT = 0
-
-      if char == 'c':
-          self.command.rPR = 255
-
-      if char == 'o':
-          self.command.rPR = 0   
-
-      #If the command entered is a int, assign this value to rPRA
-      try: 
-          self.command.rPR = int(char)
-          if self.command.rPR > 255:
-              self.command.rPR = 255
-          if self.command.rPR < 0:
-              self.command.rPR = 0
-      except ValueError:
-          pass                    
-          
-      if char == 'f':
-          self.command.rSP += 25
-          if self.command.rSP > 255:
-              self.command.rSP = 255
-              
-      if char == 'l':
-          self.command.rSP -= 25
-          if self.command.rSP < 0:
-              self.command.rSP = 0
-
-              
-      if char == 'i':
-          self.command.rFR += 25
-          if self.command.rFR > 255:
-              self.command.rFR = 255
-              
-      if char == 'd':
-          self.command.rFR -= 25
-          if self.command.rFR < 0:
-              self.command.rFR = 0
-
-      return self.command
-
-  def publisher(self, char):
-      """Main loop which requests new commands and publish them on the Robotiq2FGripperRobotOutput topic."""
-      #pub = rospy.Publisher('Robotiq2FGripperRobotOutput', outputMsg.Robotiq2FGripper_robot_output)
-
-      self.command = self.genCommand(char)            
-      print(self.command)
-      pub.publish(self.command)
-
-      rospy.sleep(0.1)
   
   def rotate_end_effector(self, angle_change):
+    # change the yaw angle of the end effector
     move_group = self.move_group
 
     joint_goal = move_group.get_current_joint_values()
@@ -495,8 +224,6 @@ class MoveGroupPythonIntefaceTutorial(object):
 
     move_group.go(joint_goal, wait=True)
     move_group.stop()
-
-    current_joints = move_group.get_current_joint_values()
 
   def get_pose_change_waypoint(self, pose_change):
     # pose_change [dx, dy, dz, dtheta]
@@ -520,6 +247,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     return waypoints
 
   def get_pose_waypoint(self, pose_array):
+    # pose_array [dx, dy, dz, dtheta]
     waypoints = []
     old_pose = self.move_group.get_current_pose().pose
     poes = copy.deepcopy(old_pose)
@@ -578,10 +306,13 @@ def quaternion_from_euler(roll, pitch, yaw):
  
   return [qx, qy, qz, qw]
 
-def teleop(tutorial):
+# teleop control
+def teleop(ur5):
   homing = False
-  pose_change = [0.0, 0.0, 0.0, 0.0]
-  tutorial.pose_velocity = np.array([0.0, 0.0, 0.0, 0.0]) 
+  ur5.pose_velocity = np.array([0.0, 0.0, 0.0, 0.0]) 
+  
+  # use appropriate keyset is to move robot at faster or slower speeds
+  # hold Shift to make move the robot at a slower speed
   slow_keyset = {"w", "s", "a", "d", "r", "f", "c", "v"}
   fast_keyset = {"i", "k", "j", "l", "y", "h", "b", "n"}
 
@@ -594,79 +325,74 @@ def teleop(tutorial):
       return False
 
     speed_mult = 1 + 500 * (int(c.lower() == c)) + 1500 * int(c.lower() in fast_keyset)
-    print(speed_mult, tutorial.teleop_speeds * speed_mult)
+
+    # translate the end effector in XYZ
     if c.lower() == "w" or c.lower() == "i":
-      tutorial.pose_velocity[0] = tutorial.teleop_speeds[0] * speed_mult
+      ur5.pose_velocity[0] = ur5.teleop_speeds[0] * speed_mult
     if c.lower() == "s" or c.lower() == "k":
-      tutorial.pose_velocity[0] = -tutorial.teleop_speeds[0] * speed_mult
+      ur5.pose_velocity[0] = -ur5.teleop_speeds[0] * speed_mult
     if c.lower() == "a" or c.lower() == "j":
-      tutorial.pose_velocity[1] = tutorial.teleop_speeds[1] * speed_mult
+      ur5.pose_velocity[1] = ur5.teleop_speeds[1] * speed_mult
     if c.lower() == "d" or c.lower() == "l":
-      tutorial.pose_velocity[1] = -tutorial.teleop_speeds[1] * speed_mult
+      ur5.pose_velocity[1] = -ur5.teleop_speeds[1] * speed_mult
     if c.lower() == "r" or c.lower() == "y":
-      tutorial.pose_velocity[2] = tutorial.teleop_speeds[2] * speed_mult
+      ur5.pose_velocity[2] = ur5.teleop_speeds[2] * speed_mult
     if c.lower() == "f" or c.lower() == "h":
-      tutorial.pose_velocity[2] = -tutorial.teleop_speeds[2] * speed_mult
+      ur5.pose_velocity[2] = -ur5.teleop_speeds[2] * speed_mult
+
+    # control the yaw angle of the end effector
     if c.lower() == "c" or c.lower() == "b":
-      #tutorial.pose_velocity[3] = tutorial.teleop_speeds[3] * speed_mult
-      tutorial.rotate_end_effector(tutorial.teleop_speeds[3] * speed_mult)
+      ur5.rotate_end_effector(ur5.teleop_speeds[3] * speed_mult)
     if c.lower() == "v" or c.lower() == "n":
-      #tutorial.pose_velocity[3] = -tutorial.teleop_speeds[3] * speed_mult
-      tutorial.rotate_end_effector(-tutorial.teleop_speeds[3] * speed_mult)
+      ur5.rotate_end_effector(-ur5.teleop_speeds[3] * speed_mult)
 
-
+    # send end effector to the home position
     if c.lower() == " ":
-      tutorial.pose_acceleration = np.array([0.0, 0.0, 0.0, 0.0])
-      tutorial.pose_velocity = np.array([0.0, 0.0, 0.0, 0.0])
-      waypoints = tutorial.get_pose_waypoint(tutorial.home_pose)
+      ur5.pose_acceleration = np.array([0.0, 0.0, 0.0, 0.0])
+      ur5.pose_velocity = np.array([0.0, 0.0, 0.0, 0.0])
+      waypoints = ur5.get_pose_waypoint(ur5.home_pose)
       homing = True
 
     if not homing:
-      tutorial.pose_velocity = np.clip(tutorial.pose_velocity, -tutorial.max_pose_velocity[0], tutorial.max_pose_velocity[0])
-      waypoints = tutorial.get_pose_change_waypoint(tutorial.pose_velocity)
+      ur5.pose_velocity = np.clip(ur5.pose_velocity, -ur5.max_pose_velocity[0], ur5.max_pose_velocity[0])
+      waypoints = ur5.get_pose_change_waypoint(ur5.pose_velocity)
 
-    cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints)
-    tutorial.execute_plan(cartesian_plan)
+    cartesian_plan, fraction = ur5.plan_cartesian_path(waypoints=waypoints)
+    ur5.execute_plan(cartesian_plan)
   except IOError:
       pass 
 
   return True
 
 def main():
-
-  waypoint_test = []
-
   try:
     print ""
     print "----------------------------------------------------------"
-    print "Welcome to the MoveIt MoveGroup Python Interface Tutorial"
+    print "Welcome to the UR5 Interface Controller"
     print "----------------------------------------------------------"
     print "Press Ctrl-D to exit at any time"
     print ""
     print "============ Press `Enter` to begin the tutorial by setting up the moveit_commander ..."
     raw_input()
-    tutorial = MoveGroupPythonIntefaceTutorial()
-    #tutorial.go_to_joint_state()
-    print(tutorial.move_group.get_current_pose().pose)
+    ur5 = UR5Controller()
+    print(ur5.move_group.get_current_pose().pose)
 
-    # print "DFDSFDSFDSF"
     rate = rospy.Rate(20) # 1 Hz
-    # print current_pose
 
     run = True
     with raw(sys.stdin):
       with nonblocking(sys.stdin):
         while run:
-          run = teleop(tutorial)
+          run = teleop(ur5)
           rate.sleep()
 
-    print "============ Python tutorial demo complete!"
+    print "============ Controller exiting!"
   except rospy.ROSInterruptException:
     return
   except KeyboardInterrupt:
     return
 
-# keyboard teleop junk 1
+# teleop methods to get keyboard input
 class raw(object):
     def __init__(self, stream):
         self.stream = stream
@@ -687,7 +413,6 @@ class nonblocking(object):
     def __exit__(self, *args):
         fcntl.fcntl(self.fd, fcntl.F_SETFL, self.orig_fl)
 
-# keyboard teleop junk 2
 def getch():
   fd = sys.stdin.fileno()
   old_settings = termios.tcgetattr(fd)
